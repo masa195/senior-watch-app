@@ -11,7 +11,8 @@ import {
   MapPin,
   Settings,
   Phone,
-  Brain
+  Brain,
+  Gamepad2
 } from 'lucide-react'
 import { useWatch } from '../context/WatchContext'
 import { format } from 'date-fns'
@@ -249,14 +250,15 @@ export default function SeniorHome({ onLogout: _onLogout }: SeniorHomeProps) {
 
             {/* クイックリンク */}
             <section className="grid grid-cols-2 gap-4">
-              {/* 脳トレ */}
+              {/* ゲーム */}
               <button
-                onClick={() => navigate('/brain-training')}
+                onClick={() => navigate('/games')}
                 className="card-senior hover:shadow-xl transition-all 
-                         flex flex-col items-center justify-center gap-3 py-6"
+                         flex flex-col items-center justify-center gap-3 py-6
+                         bg-gradient-to-br from-pink-50 to-purple-50"
               >
-                <Brain className="w-10 h-10 text-purple-600" />
-                <span className="text-senior-base font-bold text-gray-700">🧠 脳トレ</span>
+                <Gamepad2 className="w-10 h-10 text-pink-600" />
+                <span className="text-senior-base font-bold text-gray-700">🎮 ゲーム</span>
               </button>
 
               {/* 家族に電話 */}

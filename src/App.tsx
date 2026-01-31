@@ -6,6 +6,10 @@ import FamilyDashboard from './pages/FamilyDashboard'
 import RoleSelect from './pages/RoleSelect'
 import Settings from './pages/Settings'
 import BrainTraining from './pages/BrainTraining'
+import GameSelect from './pages/GameSelect'
+import MemoryGame from './pages/MemoryGame'
+import SpotDifference from './pages/SpotDifference'
+import ProverbGame from './pages/ProverbGame'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function App() {
@@ -39,6 +43,10 @@ function App() {
               <Route path="/" element={<SeniorHome onLogout={handleLogout} />} />
               <Route path="/settings" element={<Settings onLogout={handleLogout} role="senior" />} />
               <Route path="/brain-training" element={<BrainTraining />} />
+              <Route path="/games" element={<GameSelect />} />
+              <Route path="/games/memory" element={<MemoryGame />} />
+              <Route path="/games/spot-difference" element={<SpotDifference />} />
+              <Route path="/games/proverb" element={<ProverbGame />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           ) : (
