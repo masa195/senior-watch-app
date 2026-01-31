@@ -12,6 +12,7 @@ import {
   clearAllAlerts as clearAlertsFirestore,
   isFirestoreAvailable 
 } from '../lib/firestore'
+import { sendActivityLineNotification } from '../lib/lineNotify'
 
 // 活動ログの型定義
 export interface ActivityLog {
@@ -194,6 +195,9 @@ export function WatchProvider({ children }: { children: ReactNode }) {
 
     // Firestoreに保存
     saveActivity(newActivity)
+
+    // LINE通知を送信
+    sendActivityLineNotification(type, newActivity.message)
 
     // ローカル状態も更新（オフライン対応）
     setActivities(prev => [newActivity, ...prev].slice(0, 100))
