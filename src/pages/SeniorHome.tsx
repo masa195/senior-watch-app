@@ -20,7 +20,8 @@ interface SeniorHomeProps {
   onLogout: () => void
 }
 
-export default function SeniorHome({ onLogout }: SeniorHomeProps) {
+export default function SeniorHome({ onLogout: _onLogout }: SeniorHomeProps) {
+  void _onLogout // 将来使用予定
   const navigate = useNavigate()
   const { addActivity, seniorStatus } = useWatch()
   const [currentTime, setCurrentTime] = useState(new Date())

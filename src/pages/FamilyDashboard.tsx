@@ -20,11 +20,10 @@ import {
   Moon,
   Sun,
   MapPin,
-  Wifi,
   WifiOff,
   Cloud
 } from 'lucide-react'
-import { useWatch, ActivityLog, Alert } from '../context/WatchContext'
+import { useWatch, ActivityLog } from '../context/WatchContext'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 
@@ -44,7 +43,8 @@ const activityConfig: Record<ActivityLog['type'], { icon: typeof Heart; color: s
   return: { icon: Home, color: 'text-green-600', bg: 'bg-green-100' },
 }
 
-export default function FamilyDashboard({ onLogout }: FamilyDashboardProps) {
+export default function FamilyDashboard({ onLogout: _onLogout }: FamilyDashboardProps) {
+  void _onLogout // 将来使用予定
   const navigate = useNavigate()
   const { activities, alerts, seniorStatus, markAlertAsRead, clearAllAlerts, isOnline } = useWatch()
   const [activeTab, setActiveTab] = useState<'overview' | 'activities' | 'alerts'>('overview')

@@ -11,7 +11,6 @@ import {
   limit,
   serverTimestamp,
   Timestamp,
-  where,
   deleteDoc
 } from 'firebase/firestore'
 import { db, COLLECTIONS, isDemo } from './firebase'
