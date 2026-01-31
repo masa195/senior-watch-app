@@ -1,6 +1,17 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { 
+  saveActivity, 
+  saveAlert, 
+  saveStatus, 
+  subscribeToActivities, 
+  subscribeToAlerts,
+  subscribeToStatus,
+  markAlertRead,
+  clearAllAlerts as clearAlertsFirestore,
+  isFirestoreAvailable 
+} from '../lib/firestore'
 
 // 活動ログの型定義
 export interface ActivityLog {
@@ -39,6 +50,7 @@ interface WatchContextType {
   addAlert: (type: Alert['type'], message: string) => void
   markAlertAsRead: (id: string) => void
   clearAllAlerts: () => void
+  isOnline: boolean // Firestore接続状態
 }
 
 const WatchContext = createContext<WatchContextType | undefined>(undefined)
@@ -65,55 +77,99 @@ export function WatchProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState<ActivityLog[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [seniorStatus, setSeniorStatus] = useState<SeniorStatus>(defaultStatus)
+  const [isOnline, setIsOnline] = useState(false)
 
-  // ローカルストレージからデータを読み込み
+  // Firestoreリアルタイム同期 or ローカルストレージ
   useEffect(() => {
-    const savedActivities = localStorage.getItem(STORAGE_KEYS.activities)
-    const savedAlerts = localStorage.getItem(STORAGE_KEYS.alerts)
-    const savedStatus = localStorage.getItem(STORAGE_KEYS.status)
+    const firestoreAvailable = isFirestoreAvailable()
+    setIsOnline(firestoreAvailable)
 
-    if (savedActivities) {
-      const parsed = JSON.parse(savedActivities)
-      setActivities(parsed.map((a: ActivityLog) => ({
-        ...a,
-        timestamp: new Date(a.timestamp)
-      })))
-    }
-
-    if (savedAlerts) {
-      const parsed = JSON.parse(savedAlerts)
-      setAlerts(parsed.map((a: Alert) => ({
-        ...a,
-        timestamp: new Date(a.timestamp)
-      })))
-    }
-
-    if (savedStatus) {
-      const parsed = JSON.parse(savedStatus)
-      setSeniorStatus({
-        ...parsed,
-        lastCheckIn: parsed.lastCheckIn ? new Date(parsed.lastCheckIn) : null,
-        lastMeal: parsed.lastMeal ? new Date(parsed.lastMeal) : null,
-        lastMedicine: parsed.lastMedicine ? new Date(parsed.lastMedicine) : null,
+    if (firestoreAvailable) {
+      // Firestoreからリアルタイム購読
+      const unsubActivities = subscribeToActivities((data) => {
+        setActivities(data)
       })
+
+      const unsubAlerts = subscribeToAlerts((data) => {
+        setAlerts(data)
+        // 新しい未読アラートがあればブラウザ通知
+        const unreadAlerts = data.filter(a => !a.isRead)
+        if (unreadAlerts.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
+          const latest = unreadAlerts[0]
+          new Notification('デジタル同居 - アラート', {
+            body: latest.message,
+            icon: '/vite.svg',
+            tag: latest.id,
+          })
+        }
+      })
+
+      const unsubStatus = subscribeToStatus((data) => {
+        if (data) {
+          setSeniorStatus(data)
+        }
+      })
+
+      return () => {
+        unsubActivities?.()
+        unsubAlerts?.()
+        unsubStatus?.()
+      }
+    } else {
+      // ローカルストレージから読み込み
+      const savedActivities = localStorage.getItem(STORAGE_KEYS.activities)
+      const savedAlerts = localStorage.getItem(STORAGE_KEYS.alerts)
+      const savedStatus = localStorage.getItem(STORAGE_KEYS.status)
+
+      if (savedActivities) {
+        const parsed = JSON.parse(savedActivities)
+        setActivities(parsed.map((a: ActivityLog) => ({
+          ...a,
+          timestamp: new Date(a.timestamp)
+        })))
+      }
+
+      if (savedAlerts) {
+        const parsed = JSON.parse(savedAlerts)
+        setAlerts(parsed.map((a: Alert) => ({
+          ...a,
+          timestamp: new Date(a.timestamp)
+        })))
+      }
+
+      if (savedStatus) {
+        const parsed = JSON.parse(savedStatus)
+        setSeniorStatus({
+          ...parsed,
+          lastCheckIn: parsed.lastCheckIn ? new Date(parsed.lastCheckIn) : null,
+          lastMeal: parsed.lastMeal ? new Date(parsed.lastMeal) : null,
+          lastMedicine: parsed.lastMedicine ? new Date(parsed.lastMedicine) : null,
+        })
+      }
     }
   }, [])
 
-  // データ変更時にローカルストレージに保存
+  // ローカルストレージへの保存（オフライン時のみ）
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.activities, JSON.stringify(activities))
-  }, [activities])
+    if (!isOnline) {
+      localStorage.setItem(STORAGE_KEYS.activities, JSON.stringify(activities))
+    }
+  }, [activities, isOnline])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.alerts, JSON.stringify(alerts))
-  }, [alerts])
+    if (!isOnline) {
+      localStorage.setItem(STORAGE_KEYS.alerts, JSON.stringify(alerts))
+    }
+  }, [alerts, isOnline])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.status, JSON.stringify(seniorStatus))
-  }, [seniorStatus])
+    if (!isOnline) {
+      localStorage.setItem(STORAGE_KEYS.status, JSON.stringify(seniorStatus))
+    }
+  }, [seniorStatus, isOnline])
 
   // 活動を追加
-  const addActivity = (type: ActivityLog['type'], customMessage?: string) => {
+  const addActivity = useCallback((type: ActivityLog['type'], customMessage?: string) => {
     const now = new Date()
     const timeStr = format(now, 'HH:mm', { locale: ja })
     
@@ -136,7 +192,11 @@ export function WatchProvider({ children }: { children: ReactNode }) {
       isAlert: type === 'emergency',
     }
 
-    setActivities(prev => [newActivity, ...prev].slice(0, 100)) // 最新100件を保持
+    // Firestoreに保存
+    saveActivity(newActivity)
+
+    // ローカル状態も更新（オフライン対応）
+    setActivities(prev => [newActivity, ...prev].slice(0, 100))
 
     // ステータス更新
     setSeniorStatus(prev => {
@@ -167,6 +227,9 @@ export function WatchProvider({ children }: { children: ReactNode }) {
           break
       }
       
+      // Firestoreにステータス保存
+      saveStatus(updated)
+      
       return updated
     })
 
@@ -174,10 +237,10 @@ export function WatchProvider({ children }: { children: ReactNode }) {
     if (type === 'emergency') {
       addAlert('emergency', '緊急ボタンが押されました！すぐに確認してください。')
     }
-  }
+  }, [])
 
   // アラートを追加
-  const addAlert = (type: Alert['type'], message: string) => {
+  const addAlert = useCallback((type: Alert['type'], message: string) => {
     const newAlert: Alert = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
@@ -186,7 +249,11 @@ export function WatchProvider({ children }: { children: ReactNode }) {
       isRead: false,
     }
 
-    setAlerts(prev => [newAlert, ...prev].slice(0, 50)) // 最新50件を保持
+    // Firestoreに保存
+    saveAlert(newAlert)
+
+    // ローカル状態も更新
+    setAlerts(prev => [newAlert, ...prev].slice(0, 50))
 
     // ブラウザ通知
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -196,21 +263,29 @@ export function WatchProvider({ children }: { children: ReactNode }) {
         tag: newAlert.id,
       })
     }
-  }
+  }, [])
 
   // アラートを既読にする
-  const markAlertAsRead = (id: string) => {
+  const markAlertAsRead = useCallback((id: string) => {
+    // Firestoreを更新
+    markAlertRead(id)
+
+    // ローカル状態も更新
     setAlerts(prev => 
       prev.map(alert => 
         alert.id === id ? { ...alert, isRead: true } : alert
       )
     )
-  }
+  }, [])
 
   // すべてのアラートをクリア
-  const clearAllAlerts = () => {
+  const clearAllAlerts = useCallback(() => {
+    // Firestoreを更新
+    clearAlertsFirestore()
+
+    // ローカル状態も更新
     setAlerts([])
-  }
+  }, [])
 
   return (
     <WatchContext.Provider 
@@ -222,6 +297,7 @@ export function WatchProvider({ children }: { children: ReactNode }) {
         addAlert, 
         markAlertAsRead,
         clearAllAlerts,
+        isOnline,
       }}
     >
       {children}

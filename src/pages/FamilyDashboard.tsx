@@ -19,7 +19,10 @@ import {
   Pill,
   Moon,
   Sun,
-  MapPin
+  MapPin,
+  Wifi,
+  WifiOff,
+  Cloud
 } from 'lucide-react'
 import { useWatch, ActivityLog, Alert } from '../context/WatchContext'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -43,7 +46,7 @@ const activityConfig: Record<ActivityLog['type'], { icon: typeof Heart; color: s
 
 export default function FamilyDashboard({ onLogout }: FamilyDashboardProps) {
   const navigate = useNavigate()
-  const { activities, alerts, seniorStatus, markAlertAsRead, clearAllAlerts } = useWatch()
+  const { activities, alerts, seniorStatus, markAlertAsRead, clearAllAlerts, isOnline } = useWatch()
   const [activeTab, setActiveTab] = useState<'overview' | 'activities' | 'alerts'>('overview')
   const [currentTime, setCurrentTime] = useState(new Date())
 
@@ -91,7 +94,20 @@ export default function FamilyDashboard({ onLogout }: FamilyDashboardProps) {
               <Heart className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-800">デジタル同居</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-gray-800">デジタル同居</h1>
+                {isOnline ? (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                    <Cloud className="w-3 h-3" />
+                    同期中
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">
+                    <WifiOff className="w-3 h-3" />
+                    オフライン
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500">見守りダッシュボード</p>
             </div>
           </div>
