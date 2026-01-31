@@ -5,6 +5,7 @@ import SeniorHome from './pages/SeniorHome'
 import FamilyDashboard from './pages/FamilyDashboard'
 import RoleSelect from './pages/RoleSelect'
 import Settings from './pages/Settings'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function App() {
   const [userRole, setUserRole] = useState<'senior' | 'family' | null>(null)
@@ -46,6 +47,7 @@ function App() {
             </>
           )}
         </Routes>
+        <PWAInstallPrompt />
       </BrowserRouter>
     </WatchProvider>
   )
