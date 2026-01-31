@@ -5,6 +5,7 @@ import SeniorHome from './pages/SeniorHome'
 import FamilyDashboard from './pages/FamilyDashboard'
 import RoleSelect from './pages/RoleSelect'
 import Settings from './pages/Settings'
+import BrainTraining from './pages/BrainTraining'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
             <>
               <Route path="/" element={<SeniorHome onLogout={handleLogout} />} />
               <Route path="/settings" element={<Settings onLogout={handleLogout} role="senior" />} />
+              <Route path="/brain-training" element={<BrainTraining />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           ) : (

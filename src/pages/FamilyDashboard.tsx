@@ -26,6 +26,7 @@ import {
 import { useWatch, ActivityLog } from '../context/WatchContext'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import WeeklyReport from '../components/WeeklyReport'
 
 interface FamilyDashboardProps {
   onLogout: () => void
@@ -265,6 +266,9 @@ export default function FamilyDashboard({ onLogout: _onLogout }: FamilyDashboard
                 </div>
               )}
             </div>
+
+            {/* 週間レポート */}
+            <WeeklyReport />
           </div>
         )}
 
